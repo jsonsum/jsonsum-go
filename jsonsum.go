@@ -1,91 +1,150 @@
 package jsonsum
 
 import (
-	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
-	"hash/crc32"
 	"io"
-	"math"
 )
 
-func jsonStrSum(crc io.Writer, s string) {
-	crc.Write([]byte{byte('s')})
-	binary.Write(crc, binary.BigEndian, uint32(len(s))) // FIXME: teeeechnically json strings can longer than 4GiB :3
-	binary.Write(crc, binary.BigEndian, uint32(0))      // FIXME: superfluous write, would write 64-bit len instead
-	crc.Write([]byte(s))
+const DefaultMaxDepth = 64
+
+type Config struct {
+	MaxDepth int
+	Digest   func() hash.Hash
 }
 
-func jsonObjSum(dec *json.Decoder) (sum uint32, err error) {
+func (c Config) withCheckedDefaults() Config {
+	if c.MaxDepth == 0 {
+		c.MaxDepth = DefaultMaxDepth
+	} else if c.MaxDepth < 0 {
+		panic("jsonsum.Config MaxDepth cannot be negative")
+	}
+
+	if c.Digest == nil {
+		panic("jsonsum.Config Digest function is required")
+	}
+
+	return c
+}
+
+type state struct {
+	Config
+	nDigest  int
+	arrDepth int
+	objDepth int
+	buf      []byte
+}
+
+var ErrDepthLimitExceeded = errors.New("JSON nesting depth limit exceeded")
+
+func (j *state) depth() int {
+	return j.arrDepth + j.objDepth
+}
+
+func (j *state) jsonStrSum(dig hash.Hash, s string) {
+	strDig := j.Digest()
+	strDig.Write([]byte(s))
+	dig.Write([]byte{'s'})
+	dig.Write(strDig.Sum(j.buf))
+}
+
+func (j *state) jsonNumSum(dig hash.Hash, num json.Number) error {
+	dig.Write([]byte{'i'})
+	if err := normalizeNumber(dig, num.String()); err != nil {
+		return fmt.Errorf("could not normalize number %q: %w", num.String(), err)
+	}
+	return nil
+}
+
+func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder) error {
+	var err error
 	var t json.Token
-	keysSeen := make(map[string]bool)
+	sum := make([]byte, j.nDigest)
+	keysSeen := make(map[string]struct{})
+
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
 		if delim, ok := t.(json.Delim); ok && delim == '}' {
-			return
+			dig.Write([]byte{'o'})
+			dig.Write(sum)
+			return nil
 		}
 		key, ok := t.(string)
 		if !ok {
-			return 0, fmt.Errorf("expected string key for object at byte %d", dec.InputOffset())
+			return fmt.Errorf("expected string key for object at byte %d", dec.InputOffset())
 		}
-		if keysSeen[key] {
-			return 0, fmt.Errorf("duplicated object key %q at byte %d", key, dec.InputOffset())
+		if _, seen := keysSeen[key]; seen {
+			return fmt.Errorf("duplicated object key %q at byte %d", key, dec.InputOffset())
 		}
-		keysSeen[key] = true
-		crc := crc32.NewIEEE()
-		jsonStrSum(crc, key)
-		if err := jsonValSum(dec, crc); err != nil {
-			return 0, fmt.Errorf("failed to compute object value sum: %w", err)
-		} else {
-			sum ^= crc.Sum32()
+		keysSeen[key] = struct{}{}
+		pairDig := j.Digest()
+		j.jsonStrSum(pairDig, key)
+		if err := j.jsonValSum(pairDig, dec); err != nil {
+			return fmt.Errorf("failed to compute object value sum: %w", err)
+		}
+		pairSum := pairDig.Sum(j.buf)
+		for i := 0; i < j.nDigest; i++ {
+			sum[i] ^= pairSum[i]
 		}
 	}
-	return 0, fmt.Errorf("read from JSON token stream for object failed at byte %d: %w", dec.InputOffset(), err)
+
+	return fmt.Errorf("read from JSON token stream for object failed at byte %d: %w", dec.InputOffset(), err)
 }
 
-func jsonValSum(dec *json.Decoder, crc hash.Hash32) error {
+func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 	var err error
 	var t json.Token
-	arr := 0
+	localDepth := 0
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
 		switch v := t.(type) {
 		case json.Delim:
 			switch v {
 			case '[':
-				crc.Write([]byte{byte('[')})
-				arr++
+				if j.depth() == j.MaxDepth {
+					return ErrDepthLimitExceeded
+				}
+				dig.Write([]byte{byte('[')})
+				j.arrDepth++
+				localDepth++
 			case ']':
-				crc.Write([]byte{byte(']')})
-				arr--
+				dig.Write([]byte{byte(']')})
+				j.arrDepth--
+				localDepth--
 			case '{':
-				// XXX: needs depth check, malicious JSON could overflow the stack
-				if sum, err := jsonObjSum(dec); err != nil {
+				if j.depth() == j.MaxDepth {
+					return ErrDepthLimitExceeded
+				}
+				j.objDepth++
+				localDepth++
+				err = j.jsonObjSum(dig, dec)
+				j.objDepth--
+				localDepth--
+				if err != nil {
 					return err
-				} else {
-					crc.Write([]byte{byte('o')})
-					binary.Write(crc, binary.BigEndian, sum)
-					binary.Write(crc, binary.BigEndian, uint32(0)) // FIXME: superfluous write like with string len
 				}
 			default:
 				panic("unexpected json.Delim: " + string(v))
 			}
+		case json.Number:
+			if err := j.jsonNumSum(dig, v); err != nil {
+				return fmt.Errorf("cannot parse number at byte %d: %w", dec.InputOffset(), err)
+			}
 		case bool:
 			if v {
-				crc.Write([]byte{byte('t')})
+				dig.Write([]byte{byte('t')})
 			} else {
-				crc.Write([]byte{byte('f')})
+				dig.Write([]byte{byte('f')})
 			}
-		case float64:
-			// XXX: probably does not handle quirky numbers well; investigate dec.UseNumber()
-			crc.Write([]byte{byte('i')})
-			binary.Write(crc, binary.BigEndian, math.Float64bits(v))
 		case string:
-			jsonStrSum(crc, v)
+			j.jsonStrSum(dig, v)
 		case nil:
-			crc.Write([]byte{byte('n')})
+			dig.Write([]byte{byte('n')})
+		default:
+			panic(fmt.Sprintf("unexpected JSON token type: %T", v))
 		}
-		if arr == 0 {
-			break
+		if localDepth == 0 {
+			break // to process first root value only
 		}
 	}
 	if err != nil {
@@ -94,19 +153,23 @@ func jsonValSum(dec *json.Decoder, crc hash.Hash32) error {
 	return nil
 }
 
-func JsonSum(r io.Reader) (uint32, error) {
+func Sum(r io.Reader, config Config) (hash.Hash, error) {
+	sum := &state{Config: config.withCheckedDefaults()}
 	dec := json.NewDecoder(r)
-	crc := crc32.NewIEEE()
+	dec.UseNumber()
+	dig := sum.Digest()
+	sum.nDigest = dig.Size()
+	sum.buf = make([]byte, 0, sum.nDigest) // to reduce allocation overhead
 
-	if err := jsonValSum(dec, crc); err != nil {
-		return 0, fmt.Errorf("error computing JSON value sum: %w", err)
+	if err := sum.jsonValSum(dig, dec); err != nil {
+		return nil, fmt.Errorf("error computing JSON value sum: %w", err)
 	}
 
 	if _, err := dec.Token(); err == io.EOF {
-		return crc.Sum32(), nil
+		return dig, nil
 	} else if err != nil {
-		return 0, fmt.Errorf("error reading final JSON token at byte %d: %w", dec.InputOffset(), err)
+		return nil, fmt.Errorf("error reading final JSON token at byte %d: %w", dec.InputOffset(), err)
 	} else {
-		return 0, fmt.Errorf("extraneous data after end of first JSON value at byte %d", dec.InputOffset())
+		return nil, fmt.Errorf("extraneous data after end of first JSON value at byte %d", dec.InputOffset())
 	}
 }

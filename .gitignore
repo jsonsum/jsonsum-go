@@ -1,1 +1,8 @@
+*.json
+*.prof
 /.idea
+/bin
+/cmd/jsonsum/jsonsum
+/cmd/jsonsum/jsonsum.exe
+/jsonsum
+/jsonsum.exe
