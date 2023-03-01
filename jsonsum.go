@@ -58,12 +58,10 @@ func (j *state) jsonNumSum(dig hash.Hash, num json.Number) error {
 	return nil
 }
 
-func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder) error {
+func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder, sum []byte) error {
 	var err error
 	var t json.Token
-	sum := make([]byte, j.nDigest)
 	keysSeen := make(map[string]struct{})
-
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
 		if delim, ok := t.(json.Delim); ok && delim == '}' {
 			dig.Write([]byte{'o'})
@@ -95,6 +93,7 @@ func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder) error {
 func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 	var err error
 	var t json.Token
+	var sumBuf []byte
 	localDepth := 0
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
 		switch v := t.(type) {
@@ -117,7 +116,13 @@ func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 				}
 				j.objDepth++
 				localDepth++
-				err = j.jsonObjSum(dig, dec)
+				if sumBuf == nil {
+					sumBuf = make([]byte, j.nDigest)
+				}
+				err = j.jsonObjSum(dig, dec, sumBuf)
+				for i := 0; i < j.nDigest; i++ {
+					sumBuf[i] = 0
+				}
 				j.objDepth--
 				localDepth--
 				if err != nil {

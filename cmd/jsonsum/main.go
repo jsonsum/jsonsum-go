@@ -47,16 +47,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// buffer size chosen experimentally with 200 MiB JSON file on an Apple M1
+	const bufSize = 1024 * 1024 * 8 // 8 MiB
 	var input io.Reader
 	if *infile == "" {
-		input = bufio.NewReader(os.Stdin)
+		input = bufio.NewReaderSize(os.Stdin, bufSize)
 	} else {
 		f, err := os.Open(*infile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error opening input file %q: %v", *infile, *algo)
 			os.Exit(1)
 		}
-		input = bufio.NewReader(f)
+		input = bufio.NewReaderSize(f, bufSize)
 		defer f.Close()
 	}
 	result, err := jsonsum.Sum(input, jsonsum.Config{Digest: digestFunc})

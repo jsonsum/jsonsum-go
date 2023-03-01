@@ -11,14 +11,16 @@ import (
 // entire value is zero.
 func normalizeNumber(w io.Writer, s string) error {
 	isZero := true
+	a := 0
+	n := len(s)
 
 	// strip leading minus sign and zeroes
-	isNegative := s[0] == '-'
+	isNegative := s[a] == '-'
 	if isNegative {
-		s = s[1:]
+		a++
 	}
-	for len(s) > 0 && s[0] == '0' {
-		s = s[1:]
+	for n > a && s[a] == '0' {
+		a++
 	}
 
 	// look ahead into decimal parts to write minus sign and single leading zero
@@ -51,8 +53,8 @@ func normalizeNumber(w io.Writer, s string) error {
 
 	// normalize integral part
 	var exp int64
-	for len(s) > 0 && '0' <= s[0] && s[0] <= '9' {
-		if s[0] == '0' {
+	for n > a && '0' <= s[a] && s[a] <= '9' {
+		if s[a] == '0' {
 			exp++
 		} else {
 			for i := int64(0); i < exp; i++ {
@@ -60,18 +62,18 @@ func normalizeNumber(w io.Writer, s string) error {
 			}
 			isZero = false
 			exp = 0
-			w.Write([]byte{s[0]})
+			w.Write([]byte{s[a]})
 		}
-		s = s[1:]
+		a++
 	}
 
 	// normalize fractional part
 	var leadingZeroes int64
 	resetExponent := false
-	if len(s) > 0 && s[0] == '.' {
-		s = s[1:]
-		for len(s) > 0 && '0' <= s[0] && s[0] <= '9' {
-			if s[0] == '0' {
+	if n > a && s[a] == '.' {
+		a++
+		for n > a && '0' <= s[a] && s[a] <= '9' {
+			if s[a] == '0' {
 				leadingZeroes++
 			} else {
 				if !resetExponent {
@@ -84,26 +86,26 @@ func normalizeNumber(w io.Writer, s string) error {
 				for i := int64(0); i < leadingZeroes; i++ {
 					w.Write([]byte{'0'})
 				}
-				w.Write([]byte{s[0]})
+				w.Write([]byte{s[a]})
 				isZero = false
 				exp = exp - leadingZeroes - 1
 				leadingZeroes = 0
 			}
-			s = s[1:]
+			a++
 		}
 	}
-	if len(s) > 0 && (s[0] == 'e' || s[0] == 'E') {
-		s = s[1:]
-		if s[0] == '+' {
-			s = s[1:]
+	if n > a && (s[a] == 'e' || s[a] == 'E') {
+		a++
+		if s[a] == '+' {
+			a++
 		}
-		inExp, err := strconv.ParseInt(s, 10, 64)
+		inExp, err := strconv.ParseInt(s[a:], 10, 64)
 		if err != nil {
-			return fmt.Errorf("could not parse number exponent %q: %w", s, err)
+			return fmt.Errorf("could not parse number exponent %q: %w", s[a:], err)
 		}
 		exp += inExp
-		for len(s) > 0 && ('0' <= s[0] && s[0] <= '9' || s[0] == '-' || s[0] == '+') {
-			s = s[1:]
+		for n > a && ('0' <= s[a] && s[a] <= '9' || s[a] == '-' || s[a] == '+') {
+			a++
 		}
 	}
 	w.Write([]byte{'e'})
@@ -114,8 +116,8 @@ func normalizeNumber(w io.Writer, s string) error {
 		exp *= -1
 	}
 	w.Write([]byte(strconv.FormatInt(exp, 10)))
-	if len(s) != 0 {
-		return fmt.Errorf("unexpected remainder %q", s)
+	if n != a {
+		return fmt.Errorf("unexpected remainder %q", s[a:])
 	}
 
 	return nil
