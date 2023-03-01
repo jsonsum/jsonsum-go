@@ -15,40 +15,12 @@ func normalizeNumber(w io.Writer, s string) error {
 	n := len(s)
 
 	// strip leading minus sign and zeroes
-	isNegative := s[a] == '-'
-	if isNegative {
+	writeMinus := s[a] == '-'
+	if writeMinus {
 		a++
 	}
 	for n > a && s[a] == '0' {
 		a++
-	}
-
-	// look ahead into decimal parts to write minus sign and single leading zero
-	// TODO: we can skip this since we're not writing the decimal point anyway!
-	inFractionalPart := false
-	zeroIntegral := true
-	zeroFractional := true
-	for _, c := range s {
-		if c == '.' {
-			inFractionalPart = true
-			continue
-		}
-		if c == 'e' || c == 'E' {
-			break
-		}
-		if '1' <= c && c <= '9' {
-			if inFractionalPart {
-				zeroFractional = false
-			} else {
-				zeroIntegral = false
-			}
-		}
-	}
-	if isNegative && (!zeroIntegral || !zeroFractional) {
-		w.Write([]byte{'-'})
-	}
-	if zeroIntegral && zeroFractional {
-		w.Write([]byte{'0'})
 	}
 
 	// normalize integral part
@@ -57,6 +29,10 @@ func normalizeNumber(w io.Writer, s string) error {
 		if s[a] == '0' {
 			exp++
 		} else {
+			if writeMinus {
+				w.Write([]byte{'-'})
+				writeMinus = false
+			}
 			for i := int64(0); i < exp; i++ {
 				w.Write([]byte{'0'})
 			}
@@ -76,6 +52,10 @@ func normalizeNumber(w io.Writer, s string) error {
 			if s[a] == '0' {
 				leadingZeroes++
 			} else {
+				if writeMinus {
+					w.Write([]byte{'-'})
+					writeMinus = false
+				}
 				if !resetExponent {
 					for i := int64(0); i < exp; i++ {
 						w.Write([]byte{'0'})
@@ -108,17 +88,18 @@ func normalizeNumber(w io.Writer, s string) error {
 			a++
 		}
 	}
-	w.Write([]byte{'e'})
 	if isZero {
-		exp = 0
-	} else if exp < 0 {
-		w.Write([]byte{'-'})
-		exp *= -1
+		w.Write([]byte("0e0"))
+	} else {
+		w.Write([]byte{'e'})
+		if exp < 0 {
+			w.Write([]byte{'-'})
+			exp *= -1
+		}
+		w.Write([]byte(strconv.FormatInt(exp, 10)))
 	}
-	w.Write([]byte(strconv.FormatInt(exp, 10)))
 	if n != a {
 		return fmt.Errorf("unexpected remainder %q", s[a:])
 	}
-
 	return nil
 }
