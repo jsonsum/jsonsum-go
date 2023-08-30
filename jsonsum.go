@@ -8,25 +8,25 @@ import (
 	"io"
 )
 
-const DefaultMaxDepth = 64
-
 type Config struct {
-	MaxDepth int
-	Digest   func() hash.Hash
+	maxDepth int
+	digest   func() hash.Hash
 }
 
-func (c Config) withCheckedDefaults() Config {
-	if c.MaxDepth == 0 {
-		c.MaxDepth = DefaultMaxDepth
-	} else if c.MaxDepth < 0 {
-		panic("jsonsum.Config MaxDepth cannot be negative")
-	}
+type ConfigOption func(*Config)
 
-	if c.Digest == nil {
-		panic("jsonsum.Config Digest function is required")
+func WithDepthLimit(maxDepth int) ConfigOption {
+	return func(c *Config) {
+		c.maxDepth = maxDepth
 	}
+}
 
-	return c
+func WithoutDepthLimit() ConfigOption {
+	return WithDepthLimit(-1)
+}
+
+type DebugWriter interface {
+	DebugToken(json.Token)
 }
 
 type state struct {
@@ -44,7 +44,7 @@ func (j *state) depth() int {
 }
 
 func (j *state) jsonStrSum(dig hash.Hash, s string) {
-	strDig := j.Digest()
+	strDig := j.digest()
 	strDig.Write([]byte(s))
 	dig.Write([]byte{'s'})
 	dig.Write(strDig.Sum(j.buf))
@@ -63,6 +63,9 @@ func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder, sum []byte) error {
 	var t json.Token
 	keysSeen := make(map[string]struct{})
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
+		if debug, ok := dig.(DebugWriter); ok {
+			debug.DebugToken(t)
+		}
 		if delim, ok := t.(json.Delim); ok && delim == '}' {
 			dig.Write([]byte{'o'})
 			dig.Write(sum)
@@ -76,7 +79,7 @@ func (j *state) jsonObjSum(dig hash.Hash, dec *json.Decoder, sum []byte) error {
 			return fmt.Errorf("duplicated object key %q at byte %d", key, dec.InputOffset())
 		}
 		keysSeen[key] = struct{}{}
-		pairDig := j.Digest()
+		pairDig := j.digest()
 		j.jsonStrSum(pairDig, key)
 		if err := j.jsonValSum(pairDig, dec); err != nil {
 			return fmt.Errorf("failed to compute object value sum: %w", err)
@@ -96,11 +99,14 @@ func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 	var sumBuf []byte
 	localDepth := 0
 	for t, err = dec.Token(); err == nil; t, err = dec.Token() {
+		if debug, ok := dig.(DebugWriter); ok {
+			debug.DebugToken(t)
+		}
 		switch v := t.(type) {
 		case json.Delim:
 			switch v {
 			case '[':
-				if j.depth() == j.MaxDepth {
+				if j.maxDepth >= 0 && j.depth() == j.maxDepth {
 					return ErrDepthLimitExceeded
 				}
 				dig.Write([]byte{byte('[')})
@@ -111,7 +117,7 @@ func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 				j.arrDepth--
 				localDepth--
 			case '{':
-				if j.depth() == j.MaxDepth {
+				if j.maxDepth >= 0 && j.depth() == j.maxDepth {
 					return ErrDepthLimitExceeded
 				}
 				j.objDepth++
@@ -158,11 +164,17 @@ func (j *state) jsonValSum(dig hash.Hash, dec *json.Decoder) error {
 	return nil
 }
 
-func Sum(r io.Reader, config Config) (hash.Hash, error) {
-	sum := &state{Config: config.withCheckedDefaults()}
+func Sum(r io.Reader, h func() hash.Hash, opt ...ConfigOption) (hash.Hash, error) {
+	sum := &state{}
+	sum.Config.maxDepth = 64
+	sum.Config.digest = h
+	for _, applyOption := range opt {
+		applyOption(&sum.Config)
+	}
+
 	dec := json.NewDecoder(r)
 	dec.UseNumber()
-	dig := sum.Digest()
+	dig := sum.digest()
 	sum.nDigest = dig.Size()
 	sum.buf = make([]byte, 0, sum.nDigest) // to reduce allocation overhead
 

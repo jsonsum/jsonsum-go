@@ -2,4 +2,9 @@ module github.com/mologie/jsonsum-go
 
 go 1.19
 
-require github.com/pborman/getopt/v2 v2.1.0
+require (
+	github.com/pborman/getopt/v2 v2.1.0
+	golang.org/x/crypto v0.12.0
+)
+
+require golang.org/x/sys v0.11.0 // indirect
