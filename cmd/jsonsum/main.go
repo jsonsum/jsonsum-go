@@ -6,19 +6,19 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/mologie/jsonsum-go"
 	"github.com/pborman/getopt/v2"
 	"golang.org/x/crypto/blake2b"
 	"hash"
 	"hash/crc32"
 	"io"
+	"jsonsum.org/jsonsum-go"
 	"os"
 	"runtime/pprof"
 	"strings"
 )
 
 func main() {
-	algo := getopt.StringLong("algorithm", 'a', "blake2b-256", "blake2b-32/.../256/512, sha256, sha512, crc32")
+	algo := getopt.StringLong("algorithm", 'a', "sha256", "sha256, sha512, blake2b-32/.../256/512")
 	cpuprofile := getopt.StringLong("cpuprofile", 0, "", "write cpu profile to file")
 	infile := getopt.StringLong("input", 'i', "", "input file, reads from stdin if omitted")
 	getopt.Parse()
@@ -65,12 +65,11 @@ func main() {
 			return h
 		}
 	case *algo == "sha256":
-		// TBD how this fares against length extensions attacks
-		digestFunc = func() hash.Hash { return sha256.New() }
+		digestFunc = sha256.New
 	case *algo == "sha512":
-		digestFunc = func() hash.Hash { return sha512.New() }
-	case *algo == "crc32":
-		// bad choice with repeating substructures, see tests
+		digestFunc = sha512.New
+	case *algo == "broken-crc32":
+		// bad choice with repeating substructures, xor ops cancel out
 		digestFunc = func() hash.Hash { return crc32.NewIEEE() }
 	default:
 		fmt.Fprintf(os.Stderr, "error: no such algorithm: %v", *algo)

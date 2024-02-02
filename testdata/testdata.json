@@ -1,0 +1,220 @@
+[
+  {
+    "name": "Empty object",
+    "inputs": [
+      "{}"
+    ],
+    "sha256": "2bdc0496095f267441ed066cc638833fa79a52b7f8deb80c952dfac373d0c636"
+  },
+  {
+    "name": "Empty array",
+    "inputs": [
+      "[]"
+    ],
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "name": "Empty string",
+    "inputs": [
+      "\"\""
+    ],
+    "sha256": "f7e032bba6cd063d41493c5b50f0bf8bddb66e1178aa751912c3c8546fe60d1a"
+  },
+  {
+    "name": "String",
+    "inputs": [
+      "\"hi\""
+    ],
+    "sha256": "554779a109218176f87b4457dda85d39a46167952fe317f3e9c70675b5ef0aad"
+  },
+  {
+    "name": "Integer 0",
+    "inputs": [
+      "0"
+    ],
+    "sha256": "5c5467ce009ea354af8d88425fd90e72124a88732c86757b1a75cb3508d7a219"
+  },
+  {
+    "name": "Float 0",
+    "inputs": [
+      "0.0"
+    ],
+    "sha256": "5c5467ce009ea354af8d88425fd90e72124a88732c86757b1a75cb3508d7a219"
+  },
+  {
+    "name": "Scientific 0",
+    "inputs": [
+      "0e0"
+    ],
+    "sha256": "5c5467ce009ea354af8d88425fd90e72124a88732c86757b1a75cb3508d7a219"
+  },
+  {
+    "name": "True",
+    "inputs": [
+      "true"
+    ],
+    "sha256": "e3b98a4da31a127d4bde6e43033f66ba274cab0eb7eb1c70ec41402bf6273dd8"
+  },
+  {
+    "name": "False",
+    "inputs": [
+      "false"
+    ],
+    "sha256": "252f10c83610ebca1a059c0bae8255eba2f95be4d1d7bcfa89d7248a82d9f111"
+  },
+  {
+    "name": "Null",
+    "inputs": [
+      "null"
+    ],
+    "sha256": "1b16b1df538ba12dc3f97edbb85caa7050d46c148134290feba80f8236c83db9"
+  },
+  {
+    "name": "Object",
+    "inputs": [
+      "{\"hi\":1,\"ho\":2}"
+    ],
+    "sha256": "de2cb6a177865f744f59173d9ddb2f83fc209a4462c55098223a8581b9275bc5"
+  },
+  {
+    "name": "Array of arrays",
+    "inputs": [
+      "[[],[2]]"
+    ],
+    "sha256": "b1e34e12e465a4b411ab3585f5128834203a51c1ad4c3efc1caf6a95c71162d0"
+  },
+  {
+    "name": "Nested arrays",
+    "inputs": [
+      "[[[2]]]"
+    ],
+    "sha256": "0b93003bd844fda1919e1532dff7c353d46772337ad206223e692b036f50e09d"
+  },
+  {
+    "name": "Empty object in array",
+    "inputs": [
+      "[{},\"ho\",{\"hi\":2}]"
+    ],
+    "sha256": "71c5dcec05501cd68e8665df7a411c300ae53e1528a5099697eb123620f87ca0"
+  },
+  {
+    "name": "Some object",
+    "inputs": [
+      "[{\"ho\":{\"hi\":2}}]"
+    ],
+    "sha256": "d4f847d88e939bb31f837ee80634ddb041417b275219419d0ccb025aaa3c77bd"
+  },
+  {
+    "name": "Some other object",
+    "inputs": [
+      "[{\"hi\":{\"hi\":2}}]"
+    ],
+    "sha256": "cd6687250d5c341724a90effbc67b14d3cc4e1e7ebb5cee21b8159f41818b7d2"
+  },
+  {
+    "name": "Object with integer keys",
+    "inputs": [
+      "{\"1\":1,\"2\":2}"
+    ],
+    "sha256": "4abf4840dcfa48711b03ef03ee4e0d8bc6f066b07187044a6503da52d97ec424"
+  },
+  {
+    "name": "Array with one object",
+    "inputs": [
+      "[{\"1\":1}]"
+    ],
+    "sha256": "1407bf4344a736bd79b1243b6a46b6c65b62bf11b5ef92ee446d4fae4311e678"
+  },
+  {
+    "name": "Array with two identical objects",
+    "inputs": [
+      "[{\"1\":1},{\"1\":1}]"
+    ],
+    "sha256": "6e03c0a084c80adb98e88b7a1fba072a43b2488db2d1f1b0177431b63a83462c"
+  },
+  {
+    "name": "Array with three identical objects",
+    "inputs": [
+      "[{\"1\":1},{\"1\":1},{\"1\":1}]"
+    ],
+    "sha256": "b0c6a3f9fb70d9e4b01d9983185303dec0f1f3560736863d9c02bf46e48192c6"
+  },
+  {
+    "name": "Zeros",
+    "inputs": [
+      "0",
+      "0.0",
+      "0e0",
+      "0e1",
+      "0e100",
+      "0.0e100",
+      "-0",
+      "-0.0",
+      "-0.0e1"
+    ],
+    "sha256": "5c5467ce009ea354af8d88425fd90e72124a88732c86757b1a75cb3508d7a219"
+  },
+  {
+    "name": "Ones",
+    "inputs": [
+      "1",
+      "1.0",
+      "10.0e-1",
+      "0.1e1",
+      "10000000000000000000000000000000000000000e-40"
+    ],
+    "sha256": "549594803495c2f5e7e9524a9e4d450731d9aef96a19c903b81fdd1351aef187"
+  },
+  {
+    "name": "Tabs",
+    "inputs": [
+      "\"\\t\"",
+      "\"\\u0009\""
+    ],
+    "sha256": "9de9081d1d3db137f01b105771e362a64e9044edf1b3a8dba8b5d11a646ea35f"
+  },
+  {
+    "name": "Slashes",
+    "inputs": [
+      "\"/\"",
+      "\"\\/\""
+    ],
+    "sha256": "0af9e1f6e1fd512201dad5c3178d605313feda3e63685da8b6304924edf1b72b"
+  },
+  {
+    "name": "Different key order gives the same checksum",
+    "inputs": [
+      "{\"hi\":1,\"ho\":2}",
+      "{\"ho\":2,\"hi\":1}"
+    ],
+    "sha256": "de2cb6a177865f744f59173d9ddb2f83fc209a4462c55098223a8581b9275bc5"
+  },
+  {
+    "name": "Identical values should not cancel each other out",
+    "inputs": [
+      "{\"a\":1,\"b\":1}"
+    ],
+    "sha256": "038d80a5e67edccf9b08ed80f93ec0d129c92c4ff540a3848720493753a6e54a"
+  },
+  {
+    "name": "Identical values should not cancel each other out",
+    "inputs": [
+      "{\"a\":2,\"b\":2}"
+    ],
+    "sha256": "b13b62bc8101c11ed608afebf87a443bacac1fdfd1102f0a6d9dbdccb7e0baa9"
+  },
+  {
+    "name": "Identical subobjects should not cancel each other out",
+    "inputs": [
+      "{\"a\":{\"c\":{\"hi\":\"ho\"}},\"b\":{\"d\":{\"x\":1}}}"
+    ],
+    "sha256": "28694589fdf13f1ac0dc20c0e69712f6e693185838cd9a4198f8e586ce7d691b"
+  },
+  {
+    "name": "Identical subobjects should not cancel each other out",
+    "inputs": [
+      "{\"a\":{\"c\":{\"hi\":\"ho\",\"extra\":1}},\"b\":{\"d\":{\"x\":1,\"extra\":1}}}"
+    ],
+    "sha256": "b207cc026bcd3cc140df1f3c90e347cfd540a6e2b3c3c1e7abb7323ccd8b6abe"
+  }
+]
