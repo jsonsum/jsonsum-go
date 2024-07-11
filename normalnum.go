@@ -19,13 +19,13 @@ func normalizeNumber(w io.Writer, s string) error {
 	if writeMinus {
 		a++
 	}
-	for n > a && s[a] == '0' {
+	for a < n && s[a] == '0' {
 		a++
 	}
 
 	// normalize integral part
 	var e int64
-	for n > a && '0' <= s[a] && s[a] <= '9' {
+	for a < n && '0' <= s[a] && s[a] <= '9' {
 		if s[a] == '0' {
 			e++
 		} else {
@@ -44,13 +44,13 @@ func normalizeNumber(w io.Writer, s string) error {
 	}
 
 	// normalize fractional part
-	var leadingZeroes int64
-	resetExponent := false
-	if n > a && s[a] == '.' {
+	if a < n && s[a] == '.' {
+		zeroes := int64(0)
+		resetExponent := false
 		a++
-		for n > a && '0' <= s[a] && s[a] <= '9' {
+		for a < n && '0' <= s[a] && s[a] <= '9' {
 			if s[a] == '0' {
-				leadingZeroes++
+				zeroes++
 			} else {
 				if writeMinus {
 					w.Write([]byte{'-'})
@@ -63,18 +63,18 @@ func normalizeNumber(w io.Writer, s string) error {
 					resetExponent = true
 					e = 0
 				}
-				for i := int64(0); i < leadingZeroes && !z; i++ {
+				for i := int64(0); i < zeroes && !z; i++ {
 					w.Write([]byte{'0'})
 				}
 				w.Write([]byte{s[a]})
 				z = false
-				e = e - leadingZeroes - 1
-				leadingZeroes = 0
+				e = e - zeroes - 1
+				zeroes = 0
 			}
 			a++
 		}
 	}
-	if n > a && (s[a] == 'e' || s[a] == 'E') {
+	if a < n && (s[a] == 'e' || s[a] == 'E') {
 		a++
 		if s[a] == '+' {
 			a++
@@ -84,7 +84,7 @@ func normalizeNumber(w io.Writer, s string) error {
 			return fmt.Errorf("could not parse number exponent %q: %w", s[a:], err)
 		}
 		e += inExp
-		for n > a && ('0' <= s[a] && s[a] <= '9' || s[a] == '-' || s[a] == '+') {
+		for a < n && ('0' <= s[a] && s[a] <= '9' || s[a] == '-' || s[a] == '+') {
 			a++
 		}
 	}
