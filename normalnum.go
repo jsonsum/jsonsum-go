@@ -63,7 +63,7 @@ func normalizeNumber(w io.Writer, s string) error {
 					resetExponent = true
 					e = 0
 				}
-				for i := int64(0); i < leadingZeroes; i++ {
+				for i := int64(0); i < leadingZeroes && !z; i++ {
 					w.Write([]byte{'0'})
 				}
 				w.Write([]byte{s[a]})
