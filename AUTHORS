@@ -1,0 +1,6 @@
+The following people contributed to jsonsum-go.
+Please feel free to extend this file along with your contribution. Names are ordered alphabetically.
+
+* Mathias Bögl <mathias.boegl@authenticvision.com>: Bug fixes
+* Oliver Kuckertz <oliver@kuckertz.cloud>: Initial implementation, specification
+* Thomas Renoth <minus@mnus.de>: Reference implementations, test data, specification
